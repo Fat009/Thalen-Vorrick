@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Linq;
+using Unity.VisualScripting;
 
 namespace CardGame
 {
@@ -37,7 +38,7 @@ namespace CardGame
             columns = int.Parse(columnsInputField.text); 
             if (!IsGridValid(rows, columns))
             {
-                warning.text = ($"Invalid grid: {rows} x {columns} = {rows * columns} cards. Must be even.");
+                warning.text = ($"Invalid grid: {rows} x {columns} = {rows * columns} cards. Result Must be even.");
                 warning.gameObject.SetActive(true);
                 Invoke("WarningTextDeactivate", 3f);
                 return;
@@ -186,6 +187,31 @@ namespace CardGame
         private void WarningTextDeactivate()
         {
             warning.gameObject.SetActive(false);
+        }
+
+        public void RestoreGrid(SaveData data, GameManager gameManager)
+        {
+            RestartGame();
+
+            rows = data.rows;
+            columns = data.columns;
+
+            SetupGridLayout();
+
+            foreach (CardData cardData in data.cards)
+            {
+                GameObject prefab = cardPrefabs.Find(p => p.name == cardData.prefabName);
+                if (prefab != null)
+                {
+                    GameObject cardObj = Instantiate(prefab, transform);
+                    Card card = cardObj.GetComponent<Card>();
+                    card.id = cardData.id;
+                    card.isFaceUp = cardData.isFaceUp;
+                    card.InitializeCardSprite();
+                    card.Attach(gameManager);
+                }
+            }
+            LayoutRebuilder.ForceRebuildLayoutImmediate(GetComponent<RectTransform>());
         }
     }
 }

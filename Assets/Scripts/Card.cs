@@ -117,5 +117,14 @@ namespace CardGame
                 FindObjectOfType<GameManager>().CardClicked(this);
             }
         }
+        public void InitializeCardSprite()
+        {
+            if (cardImage == null)
+            {
+                cardImage = GetComponent<Image>();
+            }
+
+            cardImage.sprite = isFaceUp ? faceSprite : backSprite;
+        }
     }
 }

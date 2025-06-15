@@ -12,7 +12,6 @@ namespace CardGame
         private Card secondCard;
         private int matchesFound = 0;
         private bool isGameCompleted = false;
-        private bool isInGameplay = false; 
 
         public TMP_Text scoreText;
         public GameObject gameCompletedPanel; 
@@ -22,13 +21,11 @@ namespace CardGame
         public AudioClip gameCompletedAudio;
         private AudioSource audioSource;
 
-        private GridManager gridManager;
         private bool isCheckingMatch = false;
         private void Start()
         {
             UpdateScoreText();
             audioSource = GetComponent<AudioSource>();
-            gridManager = FindObjectOfType<GridManager>();
         }
 
         public void CardClicked(Card clickedCard)
@@ -137,10 +134,7 @@ namespace CardGame
             }
         }
 
-        public void SetInGameplay(bool isGameplay)
-        {
-            isInGameplay = isGameplay;  
-        }
+
 
        
         public void OnNotify(Card card, CardEvent cardEvent)
@@ -157,6 +151,23 @@ namespace CardGame
                     Debug.Log($"Card {card.id} mismatched!");
                     break;
             }
+        }
+        public int GetScore()
+        {
+            return matchesFound;
+        }
+
+        public bool IsGameCompleted()
+        {
+            return isGameCompleted;
+        }
+
+        public void RestoreGameState(SaveData data)
+        {
+            matchesFound = data.score;
+            isGameCompleted = data.isGameCompleted;
+            UpdateScoreText();
+            if (isGameCompleted) ShowGameCompletedPanel();
         }
     }
 }
