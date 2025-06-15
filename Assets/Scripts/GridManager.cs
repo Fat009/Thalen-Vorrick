@@ -1,10 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Linq;
-using Unity.VisualScripting;
 
 namespace CardGame
 {
@@ -208,10 +207,16 @@ namespace CardGame
                     card.id = cardData.id;
                     card.isFaceUp = cardData.isFaceUp;
                     card.InitializeCardSprite();
-                    card.Flip();
+                    card.FlipForLoad();
                     card.Attach(gameManager);
+
+                    if (cardData.isFaceUp)
+                    {
+                        gameManager.GetMatchedCardIds().Add(card.id);
+                    }
                 }
             }
+
             LayoutRebuilder.ForceRebuildLayoutImmediate(GetComponent<RectTransform>());
         }
     }

@@ -8,8 +8,9 @@ public class UIControls : MonoBehaviour
 
     public void SaveGame()
     {
-        SaveLoadManager.SaveGame(gridManager, gameManager);
+            SaveLoadManager.SaveGame(gridManager, gameManager); 
     }
+    
 
     public void LoadGame()
     {

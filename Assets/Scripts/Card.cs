@@ -59,17 +59,49 @@ namespace CardGame
             flipCoroutine = StartCoroutine(FlipCard());
         }
 
-        public void FlipImmediately()
+        public void FlipForLoad()
         {
-            if (cardImage != null)
+            if (flipCoroutine != null)
             {
-                isFaceUp = !isFaceUp;
-                cardImage.sprite = isFaceUp ? faceSprite : backSprite;
+                StopCoroutine(flipCoroutine);
             }
-            else
+            flipCoroutine = StartCoroutine(FlipCardForLoad());
+        }
+        private IEnumerator FlipCardForLoad()
+        {
+
+            float duration = 0.5f;
+            float elapsedTime = 0f;
+            Quaternion originalRotation = transform.localRotation;
+
+
+            while (elapsedTime < duration / 2)
             {
-                Debug.LogError("Card Image not assigned");
+                elapsedTime += Time.deltaTime;
+                float t = elapsedTime / (duration / 2);
+                transform.localRotation = Quaternion.Slerp(originalRotation, originalRotation * Quaternion.Euler(0, 90, 0), t);
+                yield return null;
             }
+
+
+           // isFaceUp = !isFaceUp;
+            cardImage.sprite = isFaceUp ? faceSprite : backSprite;
+
+
+            transform.localRotation = originalRotation * Quaternion.Euler(0, 90, 0);
+
+            elapsedTime = 0f;
+            while (elapsedTime < duration / 2)
+            {
+                elapsedTime += Time.deltaTime;
+                float t = elapsedTime / (duration / 2);
+                transform.localRotation = Quaternion.Slerp(originalRotation * Quaternion.Euler(0, 90, 0), originalRotation, t);
+                yield return null;
+            }
+
+
+            transform.localRotation = originalRotation;
+            Notify(this, CardEvent.Flipped);
         }
         private IEnumerator FlipCard()
         {
@@ -125,12 +157,10 @@ namespace CardGame
             }
             if(isFaceUp)
             {
-                Debug.Log("here to check facesprite");
                 cardImage.sprite =faceSprite ;
             }
             else
             {
-                Debug.Log("here to check Backsprite");
                 cardImage.sprite = backSprite;
             }
            

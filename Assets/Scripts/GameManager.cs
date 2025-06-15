@@ -1,21 +1,22 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 
 namespace CardGame
 {
-  
-
     public class GameManager : MonoBehaviour, IObserver
     {
         private Card firstCard;
         private Card secondCard;
         private int matchesFound = 0;
+        private int matchedPairs = 0;
         private bool isGameCompleted = false;
 
         public TMP_Text scoreText;
-        public GameObject gameCompletedPanel; 
+        public TMP_Text comboText;
+        public GameObject comboObject;
+        public GameObject gameCompletedPanel;
         public AudioClip cardFlippedAudio;
         public AudioClip cardMatchedAudio;
         public AudioClip cardMismatchedAudio;
@@ -23,8 +24,11 @@ namespace CardGame
         private AudioSource audioSource;
 
         private bool isCheckingMatch = false;
-
         private List<int> matchedCardIds = new List<int>();
+
+        private int comboStreak = 0;
+        private int comboMultiplier = 1;
+
         private void Start()
         {
             UpdateScoreText();
@@ -57,8 +61,23 @@ namespace CardGame
             {
                 if (firstCard.id == secondCard.id)
                 {
-                    matchesFound++;
+                    comboStreak++;
+
+                    if (comboStreak >= 2)
+                    {
+                        comboMultiplier = comboStreak; 
+                        ShowComboText($"Combo x{comboMultiplier}!");
+                    }
+                    else
+                    {
+                        comboMultiplier = 1;
+                        ShowComboText("");
+                    }
+
+                    matchesFound += comboMultiplier;
+                    matchedPairs++; 
                     matchedCardIds.Add(firstCard.id);
+
                     PlayAudio(cardMatchedAudio);
                     UpdateScoreText();
                     CheckForGameCompletion();
@@ -70,6 +89,10 @@ namespace CardGame
                 }
                 else
                 {
+                    comboStreak = 0;
+                    comboMultiplier = 1;
+                    ShowComboText("");
+
                     PlayAudio(cardMismatchedAudio);
 
                     firstCard.Notify(firstCard, CardEvent.Mismatched);
@@ -84,10 +107,9 @@ namespace CardGame
             }
         }
 
-
         private void ResetCards()
         {
-            firstCard.Flip(); 
+            firstCard.Flip();
             secondCard.Flip();
             ResetSelectedCards();
         }
@@ -103,16 +125,47 @@ namespace CardGame
         {
             if (scoreText != null)
             {
-                scoreText.text = "Match Score: " + matchesFound;
+                if (comboMultiplier > 1)
+                    scoreText.text = $"Match Score: {matchesFound} (x{comboMultiplier} Combo!)";
+                else
+                    scoreText.text = $"Match Score: {matchesFound}";
+            }
+        }
+
+        private void ShowComboText(string message)
+        {
+            if (comboText != null)
+            {
+                if (!string.IsNullOrEmpty(message))
+                {
+                    comboObject.SetActive(true);
+                    comboText.text = message;
+                    CancelInvoke(nameof(ClearComboText));
+                    Invoke(nameof(ClearComboText), 1.5f);
+                }
+                else
+                {
+                    comboObject.SetActive(false);
+                }
+            }
+        }
+
+        private void ClearComboText()
+        {
+            if (comboText != null)
+            {
+                comboText.text = "";
+                comboObject.SetActive(false);
             }
         }
 
         private void CheckForGameCompletion()
         {
-          
-            if (matchesFound == (FindObjectsOfType<Card>().Length / 2))
+            int totalPairs = FindObjectsOfType<Card>().Length / 2;
+
+            if (matchedPairs == totalPairs)
             {
-                isGameCompleted = true; 
+                isGameCompleted = true;
                 ShowGameCompletedPanel();
             }
         }
@@ -138,24 +191,19 @@ namespace CardGame
             }
         }
 
-
-
-       
         public void OnNotify(Card card, CardEvent cardEvent)
         {
-          
             switch (cardEvent)
             {
                 case CardEvent.Matched:
-                    
                     Debug.Log($"Card {card.id} matched!");
                     break;
                 case CardEvent.Mismatched:
-                  
                     Debug.Log($"Card {card.id} mismatched!");
                     break;
             }
         }
+
         public int GetScore()
         {
             return matchesFound;
@@ -170,13 +218,45 @@ namespace CardGame
         {
             matchesFound = data.score;
             isGameCompleted = data.isGameCompleted;
+
+            var uniqueMatchedIds = new HashSet<int>(GetMatchedCardIds());
+            matchedPairs = uniqueMatchedIds.Count;
+
             UpdateScoreText();
-            if (isGameCompleted) ShowGameCompletedPanel();
+
+            if (matchedPairs == FindObjectsOfType<Card>().Length / 2)
+            {
+                isGameCompleted = true;
+                ShowGameCompletedPanel();
+            }
         }
 
         public List<int> GetMatchedCardIds()
         {
             return matchedCardIds;
+        }
+
+        public void ResetGame()
+        {
+            matchesFound = 0;
+            matchedPairs = 0;
+            comboStreak = 0;
+            comboMultiplier = 1;
+            matchedCardIds.Clear();
+            isGameCompleted = false;
+
+            UpdateScoreText();
+            ShowComboText("");
+            if (gameCompletedPanel != null)
+                gameCompletedPanel.SetActive(false);
+
+            ResetSelectedCards();
+
+            GridManager gridManager = FindObjectOfType<GridManager>();
+            if (gridManager != null)
+            {
+                gridManager.RestartGame();
+            }
         }
     }
 }
