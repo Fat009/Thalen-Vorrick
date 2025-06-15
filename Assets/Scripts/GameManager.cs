@@ -14,7 +14,7 @@ namespace CardGame
         private bool isGameCompleted = false;
         private bool isInGameplay = false; 
 
-        public Text scoreText;
+        public TMP_Text scoreText;
         public GameObject gameCompletedPanel; 
         public AudioClip cardFlippedAudio;
         public AudioClip cardMatchedAudio;
@@ -23,7 +23,7 @@ namespace CardGame
         private AudioSource audioSource;
 
         private GridManager gridManager;
-
+        private bool isCheckingMatch = false;
         private void Start()
         {
             UpdateScoreText();
@@ -33,6 +33,8 @@ namespace CardGame
 
         public void CardClicked(Card clickedCard)
         {
+            if (isCheckingMatch) return;
+
             if (firstCard == null)
             {
                 firstCard = clickedCard;
@@ -44,32 +46,43 @@ namespace CardGame
                 secondCard = clickedCard;
                 secondCard.Flip();
                 PlayAudio(cardFlippedAudio);
+                isCheckingMatch = true;
                 CheckForMatch();
             }
         }
 
         private void CheckForMatch()
         {
-            if (firstCard.id == secondCard.id)
+            try
             {
-              
-                matchesFound++;
-                PlayAudio(cardMatchedAudio);
-                UpdateScoreText();
-                CheckForGameCompletion();
-                ResetSelectedCards();
-                firstCard.Notify(firstCard, CardEvent.Matched);
-                secondCard.Notify(secondCard, CardEvent.Matched);
+                if (firstCard.id == secondCard.id)
+                {
+                    matchesFound++;
+                    PlayAudio(cardMatchedAudio);
+                    UpdateScoreText();
+                    CheckForGameCompletion();
+
+                    firstCard.Notify(firstCard, CardEvent.Matched);
+                    secondCard.Notify(secondCard, CardEvent.Matched);
+
+                    ResetSelectedCards();
+                }
+                else
+                {
+                    PlayAudio(cardMismatchedAudio);
+
+                    firstCard.Notify(firstCard, CardEvent.Mismatched);
+                    secondCard.Notify(secondCard, CardEvent.Mismatched);
+
+                    Invoke("ResetCards", 1f);
+                }
             }
-            else
+            catch (System.Exception e)
             {
-              
-                PlayAudio(cardMismatchedAudio);
-                Invoke("ResetCards", 1f); 
-                firstCard.Notify(firstCard, CardEvent.Mismatched);
-                secondCard.Notify(secondCard, CardEvent.Mismatched);
+                Debug.LogError("Error during CheckForMatch: " + e);
             }
         }
+
 
         private void ResetCards()
         {
@@ -82,6 +95,7 @@ namespace CardGame
         {
             firstCard = null;
             secondCard = null;
+            isCheckingMatch = false;
         }
 
         private void UpdateScoreText()
@@ -89,7 +103,6 @@ namespace CardGame
             if (scoreText != null)
             {
                 scoreText.text = "Match Score: " + matchesFound;
-                Debug.Log("Score Updated: " + matchesFound); 
             }
         }
 
@@ -120,7 +133,7 @@ namespace CardGame
             }
             else
             {
-                Debug.LogWarning("AudioSource or AudioClip is missing");
+                Debug.Log("AudioSource or AudioClip is missing");
             }
         }
 
