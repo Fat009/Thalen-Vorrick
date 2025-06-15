@@ -1,18 +1,13 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace CardGame
 {
     public class GameManager : MonoBehaviour, IObserver
     {
-        private Card firstCard;
-        private Card secondCard;
-        private int matchesFound = 0;
-        private int matchedPairs = 0;
-        private bool isGameCompleted = false;
-
         public TMP_Text scoreText;
         public TMP_Text comboText;
         public GameObject comboObject;
@@ -21,13 +16,19 @@ namespace CardGame
         public AudioClip cardMatchedAudio;
         public AudioClip cardMismatchedAudio;
         public AudioClip gameCompletedAudio;
+
         private AudioSource audioSource;
 
-        private bool isCheckingMatch = false;
-        private List<int> matchedCardIds = new List<int>();
+        private Queue<Card> cardClickQueue = new Queue<Card>();
+        private bool isComparing = false;
 
+        private int matchesFound = 0;
+        private int matchedPairs = 0;
+        private bool isGameCompleted = false;
         private int comboStreak = 0;
         private int comboMultiplier = 1;
+
+        private List<int> matchedCardIds = new List<int>();
 
         private void Start()
         {
@@ -37,98 +38,79 @@ namespace CardGame
 
         public void CardClicked(Card clickedCard)
         {
-            if (isCheckingMatch) return;
+            if (clickedCard == null || clickedCard.isFaceUp || cardClickQueue.Contains(clickedCard))
+                return;
 
-            if (firstCard == null)
-            {
-                firstCard = clickedCard;
-                firstCard.Flip();
-                PlayAudio(cardFlippedAudio);
-            }
-            else if (secondCard == null && clickedCard != firstCard)
-            {
-                secondCard = clickedCard;
-                secondCard.Flip();
-                PlayAudio(cardFlippedAudio);
-                isCheckingMatch = true;
-                CheckForMatch();
-            }
+            cardClickQueue.Enqueue(clickedCard);
+            TryProcessQueue();
         }
 
-        private void CheckForMatch()
+        private void TryProcessQueue()
         {
-            try
-            {
-                if (firstCard.id == secondCard.id)
-                {
-                    comboStreak++;
+            if (isComparing || cardClickQueue.Count < 2)
+                return;
 
-                    if (comboStreak >= 2)
-                    {
-                        comboMultiplier = comboStreak; 
-                        ShowComboText($"Combo x{comboMultiplier}!");
-                    }
-                    else
-                    {
-                        comboMultiplier = 1;
-                        ShowComboText("");
-                    }
+            Card first = cardClickQueue.Dequeue();
+            Card second = cardClickQueue.Dequeue();
 
-                    matchesFound += comboMultiplier;
-                    matchedPairs++; 
-                    matchedCardIds.Add(firstCard.id);
-
-                    PlayAudio(cardMatchedAudio);
-                    UpdateScoreText();
-                    CheckForGameCompletion();
-
-                    firstCard.Notify(firstCard, CardEvent.Matched);
-                    secondCard.Notify(secondCard, CardEvent.Matched);
-
-                    ResetSelectedCards();
-                }
-                else
-                {
-                    comboStreak = 0;
-                    comboMultiplier = 1;
-                    ShowComboText("");
-
-                    PlayAudio(cardMismatchedAudio);
-
-                    firstCard.Notify(firstCard, CardEvent.Mismatched);
-                    secondCard.Notify(secondCard, CardEvent.Mismatched);
-
-                    Invoke("ResetCards", 1f);
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError("Error during CheckForMatch: " + e);
-            }
+            StartCoroutine(CheckCards(first, second));
         }
 
-        private void ResetCards()
+        private IEnumerator CheckCards(Card first, Card second)
         {
-            firstCard.Flip();
-            secondCard.Flip();
-            ResetSelectedCards();
-        }
+            isComparing = true;
 
-        private void ResetSelectedCards()
-        {
-            firstCard = null;
-            secondCard = null;
-            isCheckingMatch = false;
+            // Flip cards visually if not already done
+            if (!first.isFaceUp) first.Flip();
+            if (!second.isFaceUp) second.Flip();
+            PlayAudio(cardFlippedAudio);
+
+            yield return new WaitForSeconds(0.5f);
+
+            if (first.id == second.id)
+            {
+                comboStreak++;
+                comboMultiplier = comboStreak >= 2 ? comboStreak : 1;
+
+                matchesFound += comboMultiplier;
+                matchedPairs++;
+                matchedCardIds.Add(first.id);
+
+                PlayAudio(cardMatchedAudio);
+                UpdateScoreText();
+                CheckForGameCompletion();
+                ShowComboText(comboMultiplier > 1 ? $"Combo x{comboMultiplier}!" : "");
+
+                first.Notify(first, CardEvent.Matched);
+                second.Notify(second, CardEvent.Matched);
+            }
+            else
+            {
+                comboStreak = 0;
+                comboMultiplier = 1;
+                ShowComboText("");
+                PlayAudio(cardMismatchedAudio);
+
+                first.Notify(first, CardEvent.Mismatched);
+                second.Notify(second, CardEvent.Mismatched);
+
+                yield return new WaitForSeconds(0.5f);
+
+                first.Flip();
+                second.Flip();
+            }
+
+            isComparing = false;
+            TryProcessQueue(); // If more cards are in queue
         }
 
         private void UpdateScoreText()
         {
             if (scoreText != null)
             {
-                if (comboMultiplier > 1)
-                    scoreText.text = $"Match Score: {matchesFound} (x{comboMultiplier} Combo!)";
-                else
-                    scoreText.text = $"Match Score: {matchesFound}";
+                scoreText.text = comboMultiplier > 1
+                    ? $"Match Score: {matchesFound} (x{comboMultiplier} Combo!)"
+                    : $"Match Score: {matchesFound}";
             }
         }
 
@@ -162,7 +144,6 @@ namespace CardGame
         private void CheckForGameCompletion()
         {
             int totalPairs = FindObjectsOfType<Card>().Length / 2;
-
             if (matchedPairs == totalPairs)
             {
                 isGameCompleted = true;
@@ -185,10 +166,6 @@ namespace CardGame
             {
                 audioSource.PlayOneShot(clip);
             }
-            else
-            {
-                Debug.Log("AudioSource or AudioClip is missing");
-            }
         }
 
         public void OnNotify(Card card, CardEvent cardEvent)
@@ -204,15 +181,11 @@ namespace CardGame
             }
         }
 
-        public int GetScore()
-        {
-            return matchesFound;
-        }
+        public int GetScore() => matchesFound;
 
-        public bool IsGameCompleted()
-        {
-            return isGameCompleted;
-        }
+        public bool IsGameCompleted() => isGameCompleted;
+
+        public List<int> GetMatchedCardIds() => matchedCardIds;
 
         public void RestoreGameState(SaveData data)
         {
@@ -231,11 +204,6 @@ namespace CardGame
             }
         }
 
-        public List<int> GetMatchedCardIds()
-        {
-            return matchedCardIds;
-        }
-
         public void ResetGame()
         {
             matchesFound = 0;
@@ -243,14 +211,15 @@ namespace CardGame
             comboStreak = 0;
             comboMultiplier = 1;
             matchedCardIds.Clear();
+            cardClickQueue.Clear();
+            isComparing = false;
             isGameCompleted = false;
 
             UpdateScoreText();
             ShowComboText("");
+
             if (gameCompletedPanel != null)
                 gameCompletedPanel.SetActive(false);
-
-            ResetSelectedCards();
 
             GridManager gridManager = FindObjectOfType<GridManager>();
             if (gridManager != null)
