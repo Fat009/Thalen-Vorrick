@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -37,15 +37,19 @@ namespace CardGame
                 isGameCompleted = gameManager.IsGameCompleted()
             };
 
+            List<int> matchedIds = gameManager.GetMatchedCardIds();
+
             foreach (Transform child in gridManager.transform)
             {
                 Card card = child.GetComponent<Card>();
                 if (card != null)
                 {
+                    bool isMatched = matchedIds.Contains(card.id); 
+
                     data.cards.Add(new CardData
                     {
                         id = card.id,
-                        isFaceUp = card.isFaceUp,
+                        isFaceUp = isMatched,
                         prefabName = card.gameObject.name.Replace("(Clone)", "").Trim()
                     });
                 }

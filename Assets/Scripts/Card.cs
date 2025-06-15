@@ -123,8 +123,17 @@ namespace CardGame
             {
                 cardImage = GetComponent<Image>();
             }
-
-            cardImage.sprite = isFaceUp ? faceSprite : backSprite;
+            if(isFaceUp)
+            {
+                Debug.Log("here to check facesprite");
+                cardImage.sprite =faceSprite ;
+            }
+            else
+            {
+                Debug.Log("here to check Backsprite");
+                cardImage.sprite = backSprite;
+            }
+           
         }
     }
 }

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
 
 namespace CardGame
 {
@@ -22,6 +23,8 @@ namespace CardGame
         private AudioSource audioSource;
 
         private bool isCheckingMatch = false;
+
+        private List<int> matchedCardIds = new List<int>();
         private void Start()
         {
             UpdateScoreText();
@@ -55,6 +58,7 @@ namespace CardGame
                 if (firstCard.id == secondCard.id)
                 {
                     matchesFound++;
+                    matchedCardIds.Add(firstCard.id);
                     PlayAudio(cardMatchedAudio);
                     UpdateScoreText();
                     CheckForGameCompletion();
@@ -168,6 +172,11 @@ namespace CardGame
             isGameCompleted = data.isGameCompleted;
             UpdateScoreText();
             if (isGameCompleted) ShowGameCompletedPanel();
+        }
+
+        public List<int> GetMatchedCardIds()
+        {
+            return matchedCardIds;
         }
     }
 }

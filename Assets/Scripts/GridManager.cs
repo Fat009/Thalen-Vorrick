@@ -208,6 +208,7 @@ namespace CardGame
                     card.id = cardData.id;
                     card.isFaceUp = cardData.isFaceUp;
                     card.InitializeCardSprite();
+                    card.Flip();
                     card.Attach(gameManager);
                 }
             }
